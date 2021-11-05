@@ -1,0 +1,60 @@
+<mujoco model="quadrotor">
+	<compiler inertiafromgeom="true" coordinate="local" angle="radian"/>
+	<option	timestep="0.01" gravity="0 0 -9.81" density="1.2" viscosity="0.00002" />
+
+    <asset>
+        <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
+
+        <texture name="texplane" type="2d" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2" width="512" height="512" mark="cross" markrgb=".8 .8 .8"/>
+
+        <texture name="texgeom" type="cube" builtin="flat" mark="cross" width="127" height="1278"
+            rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" markrgb="1 1 1" random="0.01"/>
+
+        <material name="matplane" reflectance="0.3" texture="texplane" texrepeat="1 1" texuniform="true"/>
+
+        <material name="matgeom" texture="texgeom" texuniform="true" rgba="0.8 0.6 .4 1"/>
+    </asset>
+
+
+	<worldbody>
+        <geom name="floor" pos="0 0 0" size="0 0 .25" type="plane" material="matplane" condim="3"/>
+        <light directional="false" diffuse=".2 .2 .2" specular="0 0 0" pos="0 0 5" dir="0 0 -1" castshadow="false"/>
+        <light mode="targetbodycom" target="quadrotor" castshadow="false" directional="false" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 0 4.0" dir="0 0 -1"/>
+		<body name="quadrotor" pos="0 0 0" >
+			<geom name="core" type="box" pos="0 0 0" quat = "1 0 0 0" size="0.06 0.035 0.025"  rgba="0.3 0.3 0.8 1" mass = ".4"/>
+			
+			<geom name="a00" type="box" pos=".071 0.071 0.0"	size="0.05 0.01 0.0025"  quat = ".924 0.0 0.0 0.383"  rgba="0.3 0.3 0.3 1" mass = ".025"/>
+			<geom name="a10" type="box" pos=".071 -0.071 0.0"	size="0.05 0.01 0.0025"  quat = ".383 0.0 0.0 0.924"  rgba="0.3 0.3 0.3 1" mass = ".025"/>
+			<geom name="a20" type="box" pos="-0.071 -0.071 0.0" size="0.05 0.01 0.0025"  quat = "-.383 0.0 0.0 0.924" rgba="0.3 0.3 0.3 1" mass = ".025"/>
+			<geom name="a30" type="box" pos="-.071 0.071 0.0"	size="0.05 0.01 0.0025"  quat = ".924 0.0 0.0 -0.383" rgba="0.3 0.3 0.3 1" mass = ".025"/>
+			
+			<joint name="root"   type="free" damping="0" armature="0" pos="0 0 0" />
+			
+			<!-- Motor sites to attach motor actuators -->
+
+            <site name="motor0" type="cylinder" pos=" 0.1  0.1 0.01"  size="0.01 0.0025"  quat = "1.0 0.0 0.0 0." rgba="1.0 1.0 1.0 0.5"/>
+            <site name="motor1" type="cylinder" pos=" 0.1 -0.1 0.01"  size="0.01 0.0025"  quat = "1.0 0.0 0.0 0." rgba="1.0 1.0 1.0 0.5"/>
+            <site name="motor2" type="cylinder" pos="-0.1 -0.1 0.01"  size="0.01 0.0025"  quat = "1.0 0.0 0.0 0." rgba="1.0 1.0 1.0 0.5"/>
+            <site name="motor3" type="cylinder" pos="-0.1  0.1 0.01"  size="0.01 0.0025"  quat = "1.0 0.0 0.0 0." rgba="1.0 1.0 1.0 0.5"/>
+			
+			<!-- Thruster geometries for collisions since site's are excluded from collision checking -->
+			
+            <geom name="thruster0" type="cylinder" pos=" 0.1  0.1  0.01" size="0.05 0.0025"  quat = "1.0 0.0 0.0 0.0" rgba="1.0 1.0 1.0 0.5" mass = ".025"/>
+            <geom name="thruster1" type="cylinder" pos=" 0.1 -0.1  0.01" size="0.05 0.0025"  quat = "1.0 0.0 0.0 0.0" rgba="1.0 1.0 1.0 0.5" mass = ".025"/>
+            <geom name="thruster2" type="cylinder" pos="-0.1 -0.1  0.01" size="0.05 0.0025"  quat = "1.0 0.0 0.0 0.0" rgba="1.0 1.0 1.0 0.5" mass = ".025"/>
+            <geom name="thruster3" type="cylinder" pos="-0.1  0.1  0.01" size="0.05 0.0025"  quat = "1.0 0.0 0.0 0.0" rgba="1.0 1.0 1.0 0.5" mass = ".025"/>
+            
+            <!-- Visualization of the coordinate frame -->
+            <site name="qcX" pos="0.1 0 0" quat="-0.707107 0 0.707107 0"	size="0.005 0.1" type="capsule" rgba="1 0 0 1" />
+            <site name="qcY" pos="0 0.1 0" quat="0 0 0.707107 0.707107" 	size="0.005 0.1" type="capsule" rgba="0 1 0 1" />
+            <site name="qcZ" pos="0 0 0.1" quat="0.707107 0 0 0" 			size="0.005 0.1" type="capsule" rgba="0 0 1 1" />
+		</body>
+	</worldbody>
+    <actuator>
+        <motor ctrllimited="true" ctrlrange="0.0 2.0" gear="0.0  0. 1. 0. 0. 0." site="motor0"/>
+        <motor ctrllimited="true" ctrlrange="0.0 2.0" gear="0.0  0. 1. 0. 0. 0." site="motor1"/>
+        <motor ctrllimited="true" ctrlrange="0.0 2.0" gear="0.0  0. 1. 0. 0. 0." site="motor2"/>
+        <motor ctrllimited="true" ctrlrange="0.0 2.0" gear="0.0  0. 1. 0. 0. 0." site="motor3"/>
+	</actuator>
+</mujoco>
+ 

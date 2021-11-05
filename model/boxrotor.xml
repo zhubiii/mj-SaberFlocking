@@ -1,0 +1,78 @@
+<!-- Required Tag for Mujoco Files -->
+<mujoco model="Quadrotor">
+    <!-- Express angles in radians -->
+    <compiler angle="radian"/>
+    <!--
+        - Timestep for internal simulation
+        - Density of medium(air, water, etc)
+            - Air   =   1.2     SI units
+            - Water =   1000    SI units
+        - Viscosity of medium
+            - Air   =   0.00002 SI units
+            - Water =   0.0009  SI units
+    -->
+    <option timestep="0.01" density="1.2" viscosity="0.00002"/>
+    <!--
+        - njmax: maximum number of scalar constraints handled at runtime
+        - nconmax: Maximum number of contacts handled at runtime
+    -->
+    <size njmax="1000" nconmax="4000"/>
+
+    <asset>
+        <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
+
+        <texture name="texplane" type="2d" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2" width="512" height="512" mark="cross" markrgb=".8 .8 .8"/>
+
+        <texture name="texgeom" type="cube" builtin="flat" mark="cross" width="127" height="1278"
+            rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" markrgb="1 1 1" random="0.01"/>
+
+        <material name="matplane" reflectance="0.3" texture="texplane" texrepeat="1 1" texuniform="true"/>
+
+        <material name="matgeom" texture="texgeom" texuniform="true" rgba="0.8 0.6 .4 1"/>
+    </asset>
+
+    <worldbody>
+        <geom name="floor" pos="0 0 0" size="0 0 .25" type="plane" material="matplane" condim="3"/>
+        <light directional="false" diffuse=".2 .2 .2" specular="0 0 0" pos="0 0 5" dir="0 0 -1" castshadow="false"/>
+        <light mode="targetbodycom" target="quadrotor" castshadow="false" directional="false" diffuse=".8 .8 .8" specular="0.3 0.3 0.3" pos="0 0 4.0" dir="0 0 -1"/>
+        <body name="quadrotor" pos="0 0 .03">
+            <freejoint/>
+            <inertial pos="0 0 0.0025" quat="0 0.707107 0 0.707107" mass="0.4" diaginertia="0.00354153 0.00189948 0.00174122" />
+            <geom name="core" size="0.06 0.035 0.025" type="box" rgba="0.3 0.3 0.8 1" />
+            <geom name="a00" size="0.05 0.01 0.0025" pos="0.071 0.071 0" quat="0.923785 0 0 0.382911" type="box" rgba="0.3 0.3 0.3 1" />
+            <geom name="a10" size="0.05 0.01 0.0025" pos="0.071 -0.071 0" quat="0.382911 0 0 0.923785" type="box" rgba="0.3 0.3 0.3 1" />
+            <geom name="a20" size="0.05 0.01 0.0025" pos="-0.071 -0.071 0" quat="-0.382911 0 0 0.923785" type="box" rgba="0.3 0.3 0.3 1" />
+            <geom name="a30" size="0.05 0.01 0.0025" pos="-0.071 0.071 0" quat="0.923785 0 0 -0.382911" type="box" rgba="0.3 0.3 0.3 1" />
+            <geom name="thruster0" size="0.05 0.0025" pos="0.1 0.1 0.01" type="cylinder" rgba="1 1 1 .5" />
+            <geom name="thruster1" size="0.05 0.0025" pos="0.1 -0.1 0.01" type="cylinder" rgba="1 1 1 .5" />
+            <geom name="thruster2" size="0.05 0.0025" pos="-0.1 -0.1 0.01" type="cylinder" rgba="1 1 1 .5" />
+            <geom name="thruster3" size="0.05 0.0025" pos="-0.1 0.1 0.01" type="cylinder" rgba="1 1 1 .5" />
+            <site name="thrust" pos="0 0 0" size="0.06 0.035 0.025" type="box" rgba="0.9 0.3 0.3 1" />
+            <site name="rateX" pos="0 0 0" size="0.06 0.035 0.025" type="box"  rgba="0.9 0.3 0.3 1" />
+            <site name="rateY" pos="0 0 0" size="0.06 0.035 0.025" type="box"  rgba="0.9 0.3 0.3 1" />
+            <site name="rateZ" pos="0 0 0" size="0.06 0.035 0.025" type="box"  rgba="0.9 0.3 0.3 1" />
+            <site name="site1" pos="0 0 0" size="0.01" />
+            <site name="qcX" pos="0.1 0 0" quat="-0.707107 0 0.707107 0" size="0.005 0.1" type="capsule" rgba="1 0 0 1" />
+            <site name="qcY" pos="0 0.1 0" quat="0 0 0.707107 0.707107" size="0.005 0.1" type="capsule" rgba="0 1 0 1" />
+            <site name="qcZ" pos="0 0 0.1" quat="0.707107 0 0 0" size="0.005 0.1" type="capsule" rgba="0 0 1 1" />
+        </body>
+    </worldbody>
+
+    <actuator>
+        <general site="thrust" ctrllimited="true" ctrlrange="-2 1" />
+        <general site="thrust" ctrllimited="true" ctrlrange="-2 1" gear="0 1 0 0 0 0" />
+        <general site="thrust" ctrllimited="true" ctrlrange="0 4" gear="0 0 1 0 0 0" />
+        <general site="rateX" ctrllimited="true" ctrlrange="-1 8" gear="0 0 0 1 0 0" biastype="affine" gainprm="0.1 0 0 0 0 0 0 0 0 0" biasprm="0 0 -0.1 0 0 0 0 0 0 0" />
+        <general site="rateY" ctrllimited="true" ctrlrange="-1 8" gear="0 0 0 0 1 0" biastype="affine" gainprm="0.1 0 0 0 0 0 0 0 0 0" biasprm="0 0 -0.1 0 0 0 0 0 0 0" />
+        <general site="rateZ" ctrllimited="true" ctrlrange="-1 8" gear="0 0 0 0 0 1" biastype="affine" gainprm="0.1 0 0 0 0 0 0 0 0 0" biasprm="0 0 -0.1 0 0 0 0 0 0 0" />
+    </actuator>
+    <sensor>
+        <!-- <accelerometer name="accelerometer" site="cm" /> -->
+        <!-- <velocimeter name="velocimeter" site="cm" /> -->
+		<frameangacc name="frameangacc" objtype="xbody" objname="quadrotor" noise="0"/>
+		<frameangvel name="frameangvel" objtype="xbody" objname="quadrotor" noise="0"/>
+		<framepos name="framepos" objtype="xbody" objname="quadrotor" noise="0"/>
+		<framequat name="framequat" objtype="xbody" objname="quadrotor" noise="0"/>
+	<!-- <gyro name="gyro" site="cm" />  -->	
+	</sensor>
+</mujoco>
