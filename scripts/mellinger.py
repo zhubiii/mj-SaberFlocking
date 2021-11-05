@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import math
 from mujoco_py import load_model_from_path, MjSim, MjViewer
-import time
 
 # Loads model from path
 model = load_model_from_path("model/quadrotor_v01.xml")
@@ -68,7 +68,6 @@ class Quadrotor:
         omega = sim.data.get_body_xvelr("quadrotor")
         rpy = quat_to_rpy(sim.data.get_body_xquat("quadrotor"))
         R = quat2rot(sim.data.get_body_xquat("quadrotor"))
-        print(R)
 
         # errors in position
         ep = p_d - p
@@ -101,7 +100,6 @@ class Quadrotor:
         if self.controllability != 6:
             # special cases of under-actuation
             z_d = ar / np.linalg.norm(ar)
-            #print(z_d)
             if self.controllability == 4:
                 x_c = np.array([np.cos(rpy_d[2]), np.sin(rpy_d[2]), 0])
             else:
@@ -239,183 +237,25 @@ def null_space(A, rcond=None):
     return Q
 
 
-# Trajectory generator
-def min_snap_coeff(x1, x2, v1, v2, acc1, acc2, delta_t):
-    a0 = x1
-    a1 = v1
-    a2 = acc1/2
-
-    # The coefficients are generated with the Mathematica script:
-    # https://drive.google.com/file/d/1AJ7zPijAW1jco-QZTF0dMUIYxVBLG8-F/view?usp=sharing
-    a3 = -(3*acc1*delta_t**2 - acc2*delta_t**2 + 12*delta_t*v1 + 8*delta_t*v2 + 20*x1 - 20*x2) / (2*delta_t**3)
-    a4 = -(-3*acc1*delta_t**2 + 2*acc2*delta_t**2 - 16*delta_t*v1 - 14*delta_t*v2 - 30*x1 + 30*x2) / (2*delta_t**4)
-    a5 = -((acc1*delta_t**2 - acc2*delta_t**2 + 6*delta_t*v1 + 6*delta_t*v2 + 12*x1 - 12*x2)/(2*delta_t**5))
-
-    return a0, a1, a2, a3, a4, a5
-
-
-# state extractor
-def state_extractor(coeff, t):
-    a0, a1, a2, a3, a4, a5 = coeff
-    polynomial = a0 + a1 * t + a2 * t ** 2 + a3 * t ** 3 + a4 * t ** 4 + a5 * t ** 5
-    derivative = a1 + 2 * a2 * t + 3 * a3 * t ** 2 + 4 * a4 * t ** 3 + 5 * a5 * t ** 4
-    accel = 2 * a2 + 6 * a3 * t + 12 * a4 * t ** 2 + 20 * a5 * t ** 3
-    return polynomial, derivative, accel
-
-
-def piecewiseCoeff3D(X, Y, Z, Vx, Vy, Vz, Accx, Accy, Accz, T, num_points):
-    xcoeff, ycoeff, zcoeff = [], [], []
-
-    for i in range(num_points - 1):
-        xcoeff.append(min_snap_coeff(X[i], X[i + 1], Vx[i], Vx[i + 1], Accx[i], Accx[i + 1], T[i + 1] - T[i]))
-        ycoeff.append(min_snap_coeff(Y[i], Y[i + 1], Vy[i], Vy[i + 1], Accy[i], Accy[i + 1], T[i + 1] - T[i]))
-        zcoeff.append(min_snap_coeff(Z[i], Z[i + 1], Vz[i], Vz[i + 1], Accz[i], Accz[i + 1], T[i + 1] - T[i]))
-
-    return xcoeff, ycoeff, zcoeff
-
-
-# state-to-state waypoint generator
-def state_to_state_traj(x1, x2, v1, v2, acc1, acc2, delta_t):
-    t = np.linspace(0, delta_t, 100)
-    return state_extractor(min_snap_coeff(x1, x2, v1, v2, acc1, acc2, delta_t), t)
-
-
-def piecewise3D (X, Y, Z, Vx, Vy, Vz, Accx, Accy, Accz, T, num_points):
-    x, y, z, dx, dy, dz, ddx, ddy, ddz = [], [], [], [], [], [], [], [], []
-
-    for i in range(num_points-1):
-        xi, dxi, ddxi = state_to_state_traj(X[i], X[i+1], Vx[i], Vx[i+1], Accx[i], Accx[i+1], T[i+1] - T[i])
-        yi, dyi, ddyi = state_to_state_traj(Y[i], Y[i+1], Vy[i], Vy[i+1], Accy[i], Accy[i+1], T[i+1] - T[i])
-        zi, dzi, ddzi = state_to_state_traj(Z[i], Z[i+1], Vz[i], Vz[i+1], Accz[i], Accz[i+1], T[i+1] - T[i])
-
-        x += xi.tolist()
-        y += yi.tolist()
-        z += zi.tolist()
-
-        dx += dxi.tolist()
-        dy += dyi.tolist()
-        dz += dzi.tolist()
-
-        ddx += ddxi.tolist()
-        ddy += ddyi.tolist()
-        ddz += ddzi.tolist()
-
-    return x, y, z, dx, dy, dz, ddx, ddy, ddz
-
-
 if __name__ == "__main__":
-    r1 = Quadrotor( PID_param(0.3, 0.00,
-                         (0.0, 0.0, 0.0),
-                         (0.0, 0.0, 0.0),
-                         (0.0, 0.0, 0.0),
-                         (0.0, 0.0, 0.0)))
-    d1 = Quadrotor()
+    r1 = Quadrotor( PID_param(0.4, 0.05,
+                         (8.0, 4, 0.5),
+                         (4.0, 10.0, 0.0),
+                         (4.0, 5.0, 0.0),
+                         (10.0, 5.0, 0.0)))
+
     g = 9.81
-
-    # get trajectory
-    # Waypoints
-    p1 = [0.0, 0.0, 0.0]
-    p2 = [2.0, 0.0, 2.0]
-    p3 = [0.0, 2.0, 1.5]
-    p4 = [-2.5, 0.0, 1.0]
-    p5 = [0.0, -2.5, 2.8]
-
-    # Velocities
-    v1 = [0.0, 0.0, 0]
-    v2 = [0.0, 0.8, 0]
-    v3 = [-1.0, 0.0, 0.0]
-    v4 = [0.0, -1.0, 0.0]
-    v5 = [0.0, 0.0, 0.0]
-
-    # Accelerations
-    acc1 = [0.0, 0.0, 0]
-    acc2 = [0.0, 0.0, 0]
-    acc3 = [0.0, 0.0, 0]
-    acc4 = [0.0, 0.0, 0]
-    acc5 = [0.0, 0.0, 0.0]
-
-    # Waypoints of angles
-    th1 = [0.0, 0.0, 0.0]
-    th2 = [-0.1, 0.0, 0.5]
-    th3 = [0.0, -0.2, 0.2]
-    th4 = [0.1, 0.2, -0.5]
-    th5 = [0.0, 0.1, 0.0]
-
-    # Velocities of angles
-    omega1 = [0.0, 0.0, 0.0]
-    omega2 = [0.0, 0.0, 0.0]
-    omega3 = [0.0, 0.0, 0.0]
-    omega4 = [0.0, 0.0, 0.0]
-    omega5 = [0.0, 0.0, 0.0]
-
-    # Accelerations of angles
-    alpha1 = [0.0, 0.0, 0.0]
-    alpha2 = [0.0, 0.0, 0.0]
-    alpha3 = [0.0, 0.0, 0.0]
-    alpha4 = [0.0, 0.0, 0.0]
-    alpha5 = [0.0, 0.0, 0.0]
-
-    P = np.vstack((p1, p2, p3, p4, p5))
-    V = np.vstack((v1, v2, v3, v4, v5))
-    Acc = np.vstack((acc1, acc2, acc3, acc4, acc5))
-
-    TH = np.vstack((th1, th2, th3, th4, th5))
-    OMEGA = np.vstack((omega1, omega2, omega3, omega4, omega5))
-    ALPHA = np.vstack((alpha1, alpha2, alpha3, alpha4, alpha5))
-
-    X, Y, Z = P[:, 0], P[:, 1], P[:, 2]
-    Vx, Vy, Vz = V[:, 0], V[:, 1], V[:, 2]
-    Accx, Accy, Accz = Acc[:, 0], Acc[:, 1], Acc[:, 2]
-
-    rolls, pitchs, yaws = TH[:, 0], TH[:, 1], TH[:, 2]
-    omegar, omegap, omegay = OMEGA[:, 0], OMEGA[:, 1], OMEGA[:, 2]
-    alphar, alphap, alphay = ALPHA[:, 0], ALPHA[:, 1], ALPHA[:, 2]
-
-    time_duration = 16.0
-    T = np.array([0.0, 4.0, 8.0, 12.0, 16.0])
-
-    x, y, z, dx, dy, dz, ddx, ddy, ddz = piecewise3D(X, Y, Z, Vx, Vy, Vz, Accx, Accy, Accz, T, 5)
-    roll, pitch, yaw, droll, dpitch, dyaw, ddroll, ddpitch, ddyaw = \
-        piecewise3D(rolls, pitchs, yaws, omegar, omegap, omegay, alphar, alphap, alphay, T, 5)
-
-    for i in range(len(x)):
-        time_start = time.time()
-        r1.control(np.array([x[i], y[i], z[i]]),
-                    euler2quat(roll[i], pitch[i], yaw[i]),
-                    np.array([roll[i], pitch[i], yaw[i]]),
-                    (np.array([dx[i], dy[i], dz[i]]), np.array([droll[i], dpitch[i], dyaw[i]])),
-                    (np.array([ddx[i], ddy[i], ddz[i]]), np.array([ddroll[i], ddpitch[i], ddyaw[i]])))
-        #r1.log_time.append(time.time() - simulation_start)
-        # print(time.time() - time_start)
-        while time.time() - time_start < time_duration/len(x):
-            r1.control(np.array([x[i], y[i], z[i]]),
-                        euler2quat(roll[i], pitch[i], yaw[i]),
-                        np.array([roll[i], pitch[i], yaw[i]]),
-                        (np.array([dx[i], dy[i], dz[i]]), np.array([droll[i], dpitch[i], dyaw[i]])),
-                        (np.array([ddx[i], ddy[i], ddz[i]]), np.array([ddroll[i], ddpitch[i], ddyaw[i]])))
-            #r1.log_time.append(time.time() - simulation_start)
-            #time.sleep(0.001)
+    while (True):
+        t = sim.data.time
+        r1.control(np.array([math.cos(t), math.sin(t), 1]),     # xyz pose Desired
+                    np.array([0, 0, 0, 0]), # Rotation Quaternion Desired
+                    np.array([0, 0 , 0]),   # Roll Pitch Yaw Desired
+                    (np.array([0,0,0]), np.array([0,0,0])),
+                    (np.array([0,0,0]), np.array([0,0,0]))
+        )
+                    # These would be desired velocity and acceleration of pose and roll, pitch, yaw
+                    #(np.array([dx[i], dy[i], dz[i]]), np.array([droll[i], dpitch[i], dyaw[i]])),
+                    #(np.array([ddx[i], ddy[i], ddz[i]]), np.array([ddroll[i], ddpitch[i], ddyaw[i]])))
         # Advances the simulation by calling mj_step
         sim.step()
         viewer.render()
-
-    #pos = r1.get_position()
-
-    #d1.get_position()
-    #d1.get_quaternion()
-    #d1.get_orientation()
-    #d1.get_velocity()
-    #time.sleep(0.5)
-
-    #while True:
-        #time_start = time.time()
-        ## d1.set_position(np.array([np.cos(time_start/10), np.sin(time_start/12), 1.8+0.2*np.cos(time_start/9.0)]))
-        ## d1.set_position(np.array([2*np.cos(time_start/2), 1.5*np.sin(time_start/2.5), 5+0.2*np.cos(time_start/3)]))
-        ## d1.set_orientation(np.array([0.2*np.sin(time_start/11.0), 0.3*np.cos(time_start/15.0), np.pi*0.3*np.cos(time_start/12.5)]))
-        ## d1.set_orientation(np.array([time_start/10.0, 0, 0]))
-        ## r1.control(pos, d1.get_quaternion(), d1.get_orientation(), d1.get_velocity())
-        #r1.control(d1.get_position(), d1.get_quaternion(), d1.get_orientation(), d1.get_velocity())
-        #r1.log_time.append(time.time() - simulation_start)
-        ## print(time.time() - time_start)
-        #while time.time() - time_start < 0.05:
-            #time.sleep(0.001)
