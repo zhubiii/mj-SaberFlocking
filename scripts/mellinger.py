@@ -144,6 +144,7 @@ class Quadrotor:
 
         z_d = ar / np.linalg.norm(ar)
         x_c = np.array([np.cos(rpy_d[2]), np.sin(rpy_d[2]), 0])
+        y_d = np.cross(z_d, x_c)
         y_d = y_d / np.linalg.norm(y_d)
         x_d = np.cross(y_d, z_d)
         R_d = np.vstack([x_d, y_d, z_d]).T
