@@ -18,6 +18,31 @@ sim_state = sim.get_state()
 
 """
 Quadrotor class for utilizng geometric controller
+
+Attributes
+----------
+self.PID:               Stores PID gains for Z, XY, R(oll)P(itch), Y(aw)
+self.A:                 Static 4x4 A matrix for simple quadrotor
+                            - Composed of the forces (row 0) and the torques (rows 1-3)
+                            - Cross of the motor position vector with the propeller force (unit z vector)
+                            - Added to the cross product is a drag constant
+                                - Sign is determined by CW or CCW motor rotation
+self.inv_A:             Inverse of A matrix
+self.controllability:   Rank of A matrix (4 for simple quadrotor)
+self.log_p:             Logs the error in position
+self.log_R:             Logs the error in orientation
+self.log_u:             Logs the input force vector to the motors
+self.log_rpy:           Logs errors in rotations roll, pitch, yaw
+self.log_th:                
+self.log_tor:               
+
+Methods
+-------
+self.control(self, des_pos, des_quat, rpy_d, des_vec, des_acc)
+    Geometric controller that calculates and sends the force inputs
+    for each motor
+
+
 """
 class Quadrotor:
     def __init__(self, control_param=None):
@@ -49,7 +74,6 @@ class Quadrotor:
         # logs
         self.log_p = []
         self.log_R = []
-        self.log_time = []
         self.log_u = []
         self.log_rpy = []
         self.log_th = []
@@ -57,7 +81,8 @@ class Quadrotor:
 
     """
     Geometric Controller based on Taeyoung Lee
-    implemented by Daniel Mellinger
+    implemented by Daniel Mellinger. Calculates 
+    'u' the desired force vector for each motor
 
     Parameters
     ----------
@@ -72,7 +97,7 @@ class Quadrotor:
     None
     """
     def control(self, des_pos, des_quat, rpy_d, des_vel=None, des_acc=None):
-        # Get the current and desired state
+        # Get desired state
         p_d = des_pos
         q_d = des_quat
         R_d = quat2rot(q_d)
@@ -82,6 +107,7 @@ class Quadrotor:
         if des_acc:
             a_des, alpha_des = des_acc
 
+        # Get current state from simulation
         p = sim.data.get_body_xpos("quadrotor")
         v = sim.data.get_body_xvelp("quadrotor")
         omega = sim.data.get_body_xvelr("quadrotor")
@@ -116,18 +142,11 @@ class Quadrotor:
         ar[2] += g
         f = self.PID.mass * ar
 
-        if self.controllability != 6:
-            # special cases of under-actuation
-            z_d = ar / np.linalg.norm(ar)
-            if self.controllability == 4:
-                x_c = np.array([np.cos(rpy_d[2]), np.sin(rpy_d[2]), 0])
-            else:
-                _, pitch_d, yaw_d = rpy_d
-                x_c = np.array([np.cos(pitch_d)*np.cos(yaw_d), np.cos(pitch_d)*np.sin(yaw_d), np.sin(pitch_d)])
-            y_d = np.cross(z_d, x_c)
-            y_d = y_d / np.linalg.norm(y_d)
-            x_d = np.cross(y_d, z_d)
-            R_d = np.vstack([x_d, y_d, z_d]).T
+        z_d = ar / np.linalg.norm(ar)
+        x_c = np.array([np.cos(rpy_d[2]), np.sin(rpy_d[2]), 0])
+        y_d = y_d / np.linalg.norm(y_d)
+        x_d = np.cross(y_d, z_d)
+        R_d = np.vstack([x_d, y_d, z_d]).T
 
         eR = 0.5 * vee_map(R_d.T.dot(R) - R.T.dot(R_d))
         self.log_R.append(eR)
@@ -312,7 +331,9 @@ def null_space(A, rcond=None):
     Q = vh[num:, :].T.conj()
     return Q
 
-
+"""
+Main Method
+"""
 if __name__ == "__main__":
     r1 = Quadrotor( PID_param(0.4, 0.05,
                          (8.0, 4, 0.5),
