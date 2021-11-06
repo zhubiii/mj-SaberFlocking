@@ -16,6 +16,9 @@ viewer = MjViewer(sim)
 # Returns a copy of the simulator state
 sim_state = sim.get_state()
 
+"""
+Quadrotor class for utilizng geometric controller
+"""
 class Quadrotor:
     def __init__(self, control_param=None):
         # PID gains
@@ -52,6 +55,22 @@ class Quadrotor:
         self.log_th = []
         self.log_tor = []
 
+    """
+    Geometric Controller based on Taeyoung Lee
+    implemented by Daniel Mellinger
+
+    Parameters
+    ----------
+    des_pos:    Desired XYZ position
+    des_quat:   Desired quaternion
+    rpy_d:      Desired roll, pitch, yaw
+    des_vel:    Desired velocity of pose and roll, pitch, yaw
+    des_acc:    Desired acceleration of pose and roll, pitch, yaw
+
+    Return:
+    -------
+    None
+    """
     def control(self, des_pos, des_quat, rpy_d, des_vel=None, des_acc=None):
         # Get the current and desired state
         p_d = des_pos
@@ -151,6 +170,19 @@ class Quadrotor:
         self.log_tor.append(w[3:])
 
 
+"""
+Class to manage and store the PID parameters
+
+Parameters
+----------
+mass
+inertia
+KZ:     PID constants for Z axis
+KXY:    PID constants for X and Y axis
+KRP:    PID constants for Roll and Pitch
+KY:     PID constants for Yaw
+
+"""
 class PID_param:
     def __init__(self, mass, inertia, KZ, KXY, KRP, KY):
         # integral stuff
@@ -167,6 +199,17 @@ class PID_param:
         self.kprp, self.kdrp, self.kirp = KRP
         self.kpy, self.kdy, self.kiy = KY
 
+"""
+Function to convert quaternion to euler angles
+
+Parameters
+----------
+quat:           quaternion
+
+Return
+------
+Euler angles:   np.array([roll, pitch, yaw])
+"""
 def quat_to_rpy(quat):
     assert np.shape(quat) == (4,)
     roll = np.arctan2(2 * (quat[0] * quat[1] + quat[2] * quat[3]), 1 - 2 * (quat[1] ** 2 + quat[2] ** 2))
@@ -174,8 +217,18 @@ def quat_to_rpy(quat):
     yaw = np.arctan2(2 * (quat[0] * quat[3] + quat[1] * quat[2]), 1 - 2 * (quat[2] ** 2 + quat[3] ** 2))
     return np.array([roll, pitch, yaw])
 
+"""
+Covert a quaternion into a full three-dimensional rotation matrix.
+
+Parameters
+----------
+quat:           quaternion
+
+Return
+------
+rot_matrix:     3 dimensional rotation matrix
+"""
 def quat2rot(quat):
-    # Covert a quaternion into a full three-dimensional rotation matrix.
     # Extract the values from quat
     q0 = quat[0]
     q1 = quat[1]
@@ -205,7 +258,19 @@ def quat2rot(quat):
     return rot_matrix
 
 
-# convert euler angles (roll, pitch, yaw) into quaternion (qx, qy, qz, qw)
+"""
+Convert euler angles (roll, pitch, yaw) into quaternion (qx, qy, qz, qw)
+
+Parameters
+----------
+roll
+pitch
+yaw
+
+Return
+------
+quaternion:     np.array([qx, qy, qz, qw])
+"""
 def euler2quat(roll, pitch, yaw):
     cy = np.cos(yaw * 0.5)
     sy = np.sin(yaw * 0.5)
@@ -219,13 +284,24 @@ def euler2quat(roll, pitch, yaw):
                      cr * cp * sy - sr * sp * cy,
                      cr * cp * cy + sr * sp * sy])
 
+"""
+Convert a skew-symmetric matrix to the corresponding array
 
+Parameters
+----------
+skew_s:     Skew-symmetric matrix
+
+Return
+------
+Corresponding array for skew-symmetric matrix
+"""
 def vee_map(skew_s):
-    # convert a skew-symmetric matrix to the corresponding array
     return np.array([skew_s[2, 1], skew_s[0, 2], skew_s[1, 0]])
 
 
-# Wow, numpy does not have null space :(
+"""
+Create null space
+"""
 def null_space(A, rcond=None):
     u, s, vh = np.linalg.svd(A, full_matrices=True)
     M, N = u.shape[0], vh.shape[1]
@@ -247,7 +323,7 @@ if __name__ == "__main__":
     g = 9.81
     while (True):
         t = sim.data.time
-        r1.control(np.array([math.cos(t), math.sin(t), 1]),     # xyz pose Desired
+        r1.control(np.array([math.cos(t)*2, math.sin(t)*2, 1]),     # xyz pose Desired
                     np.array([0, 0, 0, 0]), # Rotation Quaternion Desired
                     np.array([0, 0 , 0]),   # Roll Pitch Yaw Desired
                     (np.array([0,0,0]), np.array([0,0,0])),
