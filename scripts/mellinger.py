@@ -1,11 +1,9 @@
-#!/usr/bin/env python3
-
 import numpy as np
 import math
 from mujoco_py import load_model_from_path, MjSim, MjViewer
 
 # Loads model from path
-model = load_model_from_path("model/quadrotor_v01.xml")
+model = load_model_from_path("model/100drones.xml")
 
 # represents a running simulation including its state
 sim = MjSim(model)
@@ -108,11 +106,11 @@ class Quadrotor:
             a_des, alpha_des = des_acc
 
         # Get current state from simulation
-        p = sim.data.get_body_xpos("quadrotor")
-        v = sim.data.get_body_xvelp("quadrotor")
-        omega = sim.data.get_body_xvelr("quadrotor")
-        rpy = quat_to_rpy(sim.data.get_body_xquat("quadrotor"))
-        R = quat2rot(sim.data.get_body_xquat("quadrotor"))
+        p = sim.data.get_body_xpos("quadrotor0")
+        v = sim.data.get_body_xvelp("quadrotor0")
+        omega = sim.data.get_body_xvelr("quadrotor0")
+        rpy = quat_to_rpy(sim.data.get_body_xquat("quadrotor0"))
+        R = quat2rot(sim.data.get_body_xquat("quadrotor0"))
 
         # errors in position
         ep = p_d - p
@@ -179,6 +177,7 @@ class Quadrotor:
             if u_crude[i] < 0:
                 u[i] = 0
 
+        # Send forces to each motor in mujoco
         sim.data.ctrl[0] = u[0]
         sim.data.ctrl[1] = u[1]
         sim.data.ctrl[2] = u[2]
