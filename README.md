@@ -3,6 +3,17 @@ MuJoCo simulation test bed utilizing multi-agent flocking algorithms from Olfati
 
 ![One Drone](./images/100drones.png "One Drone")
 
+## Getting Started
+### Install Requirements
+`pip3 install -r requirements.txt`
+### Run a test
+`python3 scripts/gen_Ndrones.py [N number of drones you want]`
+
+`python3 scripts/main.py model/Ndrones.xml`
+
+## Notes
+- The code is well documented
+- Currently `main.py` will order all `N` quadrotors to follow the same circular motion trajectory
 
 ## Acknowledgments
 Developed at Lehigh AirLab by Brian Zhu with help from Jiawei Xu and Diego S. D'antonio under supervision of David Saldana
