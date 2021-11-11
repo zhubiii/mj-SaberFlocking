@@ -3,7 +3,6 @@ File to generate N drones into an xml file. Each drone
 to have unique indentifiers and randomly generated positions
 """
 from xml.dom import minidom
-import os
 import sys
 import random
 
