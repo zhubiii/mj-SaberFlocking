@@ -1,24 +1,21 @@
 import numpy as np
-import math
-from mujoco_py import load_model_from_path, MjSim, MjViewer
-
-# Loads model from path
-model = load_model_from_path("model/100drones.xml")
-
-# represents a running simulation including its state
-sim = MjSim(model)
-
-# Display GUI showing the scene of an MjSim with a mouse-movable camera
-viewer = MjViewer(sim)
-
-# Returns a copy of the simulator state
-sim_state = sim.get_state()
 
 """
 Quadrotor class for utilizng geometric controller
+Built for use in MuJoCo
+
+Parameters
+----------
+self:                   This object
+control_param:          The PID param class specifying gains
+sim:                    The MuJoCo simulation reference
+id:                     The unique ID of the instantiated quadrotor
 
 Attributes
 ----------
+self.sim:               Represents a running simulation including its state
+self.id:                The instantiated quadrotors unique ID
+self.name:              The name of the quadrotor in the simulation, specified by generated XML file
 self.PID:               Stores PID gains for Z, XY, R(oll)P(itch), Y(aw)
 self.A:                 Static 4x4 A matrix for simple quadrotor
                             - Composed of the forces (row 0) and the torques (rows 1-3)
@@ -43,7 +40,16 @@ self.control(self, des_pos, des_quat, rpy_d, des_vec, des_acc)
 
 """
 class Quadrotor:
-    def __init__(self, control_param=None):
+    def __init__(self, control_param=None, sim=None, id=None):
+        # MuJoCo simulation state
+        self.sim = sim
+
+        # ID for the instantiated drone
+        self.id = id
+
+        # Quadrotor name
+        self.name = "quadrotor"+str(id)
+
         # PID gains
         self.PID = control_param
 
@@ -106,11 +112,11 @@ class Quadrotor:
             a_des, alpha_des = des_acc
 
         # Get current state from simulation
-        p = sim.data.get_body_xpos("quadrotor0")
-        v = sim.data.get_body_xvelp("quadrotor0")
-        omega = sim.data.get_body_xvelr("quadrotor0")
-        rpy = quat_to_rpy(sim.data.get_body_xquat("quadrotor0"))
-        R = quat2rot(sim.data.get_body_xquat("quadrotor0"))
+        p = self.sim.data.get_body_xpos(self.name)
+        v = self.sim.data.get_body_xvelp(self.name)
+        omega = self.sim.data.get_body_xvelr(self.name)
+        rpy = quat_to_rpy(self.sim.data.get_body_xquat(self.name))
+        R = quat2rot(self.sim.data.get_body_xquat(self.name))
 
         # errors in position
         ep = p_d - p
@@ -137,7 +143,7 @@ class Quadrotor:
         kp_xy, kd_xy, ki_xy = self.PID.kpxy, self.PID.kdxy, self.PID.kixy
         ar = np.concatenate([kp_xy * ep[:2] + kd_xy * ev[:2] + ki_xy * self.PID.e_p_i[:2],
                              np.array([kp_z * ep[2] + kd_z * ev[2] + ki_z * self.PID.e_p_i[2]])]) + a_des
-        ar[2] += g
+        ar[2] += 9.81
         f = self.PID.mass * ar
 
         z_d = ar / np.linalg.norm(ar)
@@ -178,10 +184,12 @@ class Quadrotor:
                 u[i] = 0
 
         # Send forces to each motor in mujoco
-        sim.data.ctrl[0] = u[0]
-        sim.data.ctrl[1] = u[1]
-        sim.data.ctrl[2] = u[2]
-        sim.data.ctrl[3] = u[3]
+        # MuJoCo stores the ctrl as a continuous array so
+        # we need to index to the correct quadrotor based on its ID
+        self.sim.data.ctrl[(self.id*4)]     = u[0]
+        self.sim.data.ctrl[(self.id*4)+1]   = u[1]
+        self.sim.data.ctrl[(self.id*4)+2]   = u[2]
+        self.sim.data.ctrl[(self.id*4)+3]   = u[3]
         #print("u: {}".format(u))
         self.log_u.append(u)
 
@@ -330,29 +338,3 @@ def null_space(A, rcond=None):
     num = np.sum(s > tol, dtype=int)
     Q = vh[num:, :].T.conj()
     return Q
-
-"""
-Main Method
-"""
-if __name__ == "__main__":
-    r1 = Quadrotor( PID_param(0.4, 0.05,
-                         (8.0, 4, 0.5),
-                         (4.0, 10.0, 0.0),
-                         (4.0, 5.0, 0.0),
-                         (10.0, 5.0, 0.0)))
-
-    g = 9.81
-    while (True):
-        t = sim.data.time
-        r1.control(np.array([math.cos(t)*2, math.sin(t)*2, 1]),     # xyz pose Desired
-                    np.array([0, 0, 0, 0]), # Rotation Quaternion Desired
-                    np.array([0, 0 , 0]),   # Roll Pitch Yaw Desired
-                    (np.array([0,0,0]), np.array([0,0,0])),
-                    (np.array([0,0,0]), np.array([0,0,0]))
-        )
-                    # These would be desired velocity and acceleration of pose and roll, pitch, yaw
-                    #(np.array([dx[i], dy[i], dz[i]]), np.array([droll[i], dpitch[i], dyaw[i]])),
-                    #(np.array([ddx[i], ddy[i], ddz[i]]), np.array([ddroll[i], ddpitch[i], ddyaw[i]])))
-        # Advances the simulation by calling mj_step
-        sim.step()
-        viewer.render()
