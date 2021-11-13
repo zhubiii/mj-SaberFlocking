@@ -4,6 +4,10 @@ MuJoCo simulation test bed utilizing multi-agent flocking algorithms from Olfati
 ![One Drone](./images/100drones.png "One Drone")
 
 ## Getting Started
+### Install MuJoCo Binaries for Linux or OSX (Windows Support Deprecated)
+- [Linux](https://mujoco.org/download/mujoco210-linux-x86_64.tar.gz)
+- [OSX](https://mujoco.org/download/mujoco210-macos-x86_64.tar.gz)
+- Extract the downloaded `mujoco210` directory into `~/.mujoco/mujoco210`
 ### Install Requirements
 `pip3 install -r requirements.txt`
 ### Run a test
