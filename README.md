@@ -13,14 +13,18 @@ MuJoCo simulation test bed utilizing multi-agent flocking algorithms from Olfati
 ### Run a test
 `python3 scripts/gen_Ndrones.py [N number of drones you want]`
 
-`python3 scripts/main.py model/Ndrones.xml`
+`python3 src/test.py model/Ndrones.xml`
+
+### Flocking Algorithm 1
+#### THIS IS VERY BROKEN AT THE MOMENT
+`python3 src/algo1.py model/Ndrones.xml`
 
 ## Notes
 - The code is well documented
-- Currently `main.py` will order all `N` quadrotors to follow the same circular motion trajectory
+- Currently `test.py` will order all `N` quadrotors to follow the same circular motion trajectory
 
 ## Acknowledgments
-Developed at Lehigh AirLab by Brian Zhu with help from Jiawei Xu and Diego S. D'antonio under supervision of David Saldana
+Developed at Lehigh AirLab by Brian Zhu with help from Neeraj Gandhi, Jiawei Xu and Diego S. D'antonio under supervision of David Saldana
 
 ## References
 - R. Olfati-Saber, "[Flocking for multi-agent dynamic systems: algorithms and theory,](https://ieeexplore.ieee.org/document/1605401)" in IEEE Transactions on Automatic Control, vol. 51, no. 3, pp. 401-420, March 2006, doi: 10.1109/TAC.2005.864190.
