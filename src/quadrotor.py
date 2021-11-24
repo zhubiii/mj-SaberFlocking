@@ -17,6 +17,8 @@ self.sim:               Represents a running simulation including its state
 self.id:                The instantiated quadrotors unique ID
 self.name:              The name of the quadrotor in the simulation, specified by generated XML file
 self.PID:               Stores PID gains for Z, XY, R(oll)P(itch), Y(aw)
+self.curr_pose2D:       The 2-vector of the position
+self.curr_vel2D:        The 2-vector of the velocity
 self.curr_pose:         The 3-vector of the position
 self.curr_vel:          The 3-vector of the velocity
 self.A:                 Static 4x4 A matrix for simple quadrotor
@@ -56,8 +58,10 @@ class Quadrotor:
         self.PID = control_param
 
         # Current Pose and Velocity for algorithms
-        self.curr_pose = None
-        self.curr_vel  = None
+        self.curr_pose2D    = None
+        self.curr_vel2D     = None
+        self.curr_pose      = None
+        self.curr_vel       = None
 
         # Drag constants
         km = 1.0
@@ -120,8 +124,10 @@ class Quadrotor:
         # Get current state from simulation
         p = self.sim.data.get_body_xpos(self.name)
         v = self.sim.data.get_body_xvelp(self.name)
-        self.curr_pose = p
-        self.curr_vel  = v
+        self.curr_pose2D    = p[0:2]
+        self.curr_vel2D     = v[0:2]
+        self.curr_pose      = p
+        self.curr_vel       = v
         omega = self.sim.data.get_body_xvelr(self.name)
         rpy = quat_to_rpy(self.sim.data.get_body_xquat(self.name))
         R = quat2rot(self.sim.data.get_body_xquat(self.name))
