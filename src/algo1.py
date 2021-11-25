@@ -204,10 +204,9 @@ if __name__ == "__main__":
             return np.array([[0,0,0]])
 
     first = True
-    t = sim.data.time
+    # Set by the xml file
+    dt    = 0.01
     while (True):
-        dt = sim.data.time-t
-        t  = sim.data.time
         for i in range(N):
             if (not first):
                 curr_pose = Quadrotors[i].curr_pose
