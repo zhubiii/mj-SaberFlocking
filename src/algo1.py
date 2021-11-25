@@ -46,7 +46,7 @@ if __name__ == "__main__":
         # Append N quadrotors to object list
         Quadrotors.append(
             Quadrotor( PID_param(0.4, 0.05,
-                            (8.0, 4, 0.5),
+                            (8.0, 5, 0.5),
                             (4.0, 10.0, 0.0),
                             (4.0, 5.0, 0.0),
                             (10.0, 5.0, 0.0)),
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     r is the radius of the FOV
     """
     d = 1
-    r = 1.2 * d
+    r = 1.25 * d
 
     """
     σ norm from (8)
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     and spatial adjacency matrix
     """
     ϵ = .1                                                  # How smooth the function is
-    σ_norm = lambda z: (np.sqrt(1+ϵ * z**2) - 1) / ϵ      # Nonnegative map
+    σ_norm = lambda z: (np.sqrt(1+ϵ * z**2) - 1) / ϵ        # Nonnegative map
     σ_norm_vec = lambda z: (np.sqrt(1 + ϵ * np.linalg.norm(z, axis=1)**2) - 1) / ϵ
     σ_norm_single_vec = lambda z: (np.sqrt(1 + ϵ * np.linalg.norm(z)**2) - 1) / ϵ
 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     a, b = 5, 5                                             # Parameters that guarentee ϕ(0)=0
     c = abs(a-b)/np.sqrt(4*a*b)           
 
-    σ1 = lambda z: z/np.sqrt(1+z**2)                      # Uneven Sigmoidal function
+    σ1 = lambda z: z/np.sqrt(1+z**2)                        # Uneven Sigmoidal function
     ϕ_α = lambda z: ρ_h(z/r_α) * ϕ(z-d_α)                   # Action function that vanishes for z >= r_α
     ϕ = lambda z: ((a+b) * σ1(z+c) + (a-b)) / 2             # Equation 15, action function
 
@@ -180,7 +180,8 @@ if __name__ == "__main__":
     """
     def u_i_α(in_q, in_p, in_i):
     #     import pdb; pdb.set_trace()
-        N_i = neighbors(in_i, in_q)         # Indices of neighbors
+        N_i = neighbors(in_i, in_q)             # Indices of neighbors
+        # Do not run if no neighbors
         if (N_i):
             q_j =  []                           # Vector of neighbor positions
             p_j =  []                           # Vector of neighbor velocities
@@ -206,18 +207,22 @@ if __name__ == "__main__":
     t = sim.data.time
     while (True):
         dt = sim.data.time-t
+        t  = sim.data.time
         for i in range(N):
             if (not first):
-                u = u_i_α(np.asarray(Quadrotors[i].curr_pose), np.asarray(Quadrotors[i].curr_vel), i)
-                #print('u')
-                #print(u)
-                #print('u end')
+                curr_pose = Quadrotors[i].curr_pose
+                curr_vel  = Quadrotors[i].curr_vel
+                u = u_i_α(np.asarray(curr_pose), np.asarray(curr_vel), i)
+                # TODO: Fix this jank
+                u = u[0]
+
                 # We only send 2D commands, keep desired z-pos fixed
-                Quadrotors[i].control(np.array([0, 0, .5]),       # xyz pose Desired
-                            np.array([0, 0, 0, 0]),                                      # Rotation Quaternion Desired
-                            np.array([0, 0 , 0]),                                        # Roll Pitch Yaw Desired
-                            (np.array([u[0][0]*dt,u[0][1]*dt, 0]), np.array([0,0,0])),                      # Velocity Desired
-                            (np.array([u[0][0], u[0][1], 0]), np.array([0,0,0]))                       # Acceleration Desired
+                Quadrotors[i].control(
+                            np.array([curr_pose[0]+curr_vel[0]*dt, curr_pose[1]+curr_vel[1]*dt, 1]),        # xyz pose Desired
+                            np.array([0, 0, 0, 0]),                                                         # Rotation Quaternion Desired
+                            np.array([0, 0 , 0]),                                                           # Roll Pitch Yaw Desired
+                            (np.array([curr_vel[0]+u[0]*dt, curr_vel[1]+u[1]*dt, 0]), np.array([0,0,0])),   # Velocity Desired
+                            (np.array([u[0], u[1], u[2]]), np.array([0,0,0]))                               # Acceleration Desired
                 )
             else:
                 # This should only run once to initialize object fields
