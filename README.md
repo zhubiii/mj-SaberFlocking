@@ -16,7 +16,6 @@ MuJoCo simulation test bed utilizing multi-agent flocking algorithms from Olfati
 `python3 src/test.py model/Ndrones.xml`
 
 ### Flocking Algorithm 1
-#### THIS IS VERY BROKEN AT THE MOMENT
 `python3 src/algo1.py model/Ndrones.xml`
 
 ## Notes

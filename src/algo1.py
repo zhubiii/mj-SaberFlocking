@@ -46,10 +46,10 @@ if __name__ == "__main__":
         # Append N quadrotors to object list
         Quadrotors.append(
             Quadrotor( PID_param(0.4, 0.05,
-                            (8.0, 5, 0.5),
+                            (8.0, 7, 0.01),
                             (4.0, 10.0, 0.0),
-                            (4.0, 5.0, 0.0),
-                            (10.0, 5.0, 0.0)),
+                            (4.0, 7.0, 0.0),
+                            (10.0, 7.0, 0.0)),
                             sim, i
             )
         )
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     d is the distance between agents
     r is the radius of the FOV
     """
-    d = 1
+    d = 2
     r = 1.25 * d
 
     """
@@ -88,7 +88,7 @@ if __name__ == "__main__":
 
     h: The point which the function begins to descend toward zero
     """
-    def ρ_h(z, h=0.2):
+    def ρ_h(z, h=0.5):
         #if 0<= z < h:
          #return 1
         #elif h<= z < 1:
@@ -115,8 +115,13 @@ if __name__ == "__main__":
     """
     ACTION FUNCTION
     From equation (15)
+
+    PARAMETERS
+    ----------
+    a,b:    Seem to determine how fast agents move to converge
+            should keep low for drones not to have too much momentum
     """
-    a, b = 5, 5                                             # Parameters that guarentee ϕ(0)=0
+    a, b = .15, .25                                             # Parameters that guarentee ϕ(0)=0
     c = abs(a-b)/np.sqrt(4*a*b)           
 
     σ1 = lambda z: z/np.sqrt(1+z**2)                        # Uneven Sigmoidal function
@@ -199,7 +204,8 @@ if __name__ == "__main__":
         #     import pdb; pdb.set_trace()
             term1 = np.transpose(sij* np.asarray(zq).transpose())
             term2 = np.transpose(aij * np.asarray(zp).transpose())
-            return np.sum(term1 + term2, axis=0)   # See Paragraph around Eq 43
+            return np.sum(term1 + term2, axis=0) - 0.3*in_q - 2.5*in_p   # Add a rendevouz point...so alg2
+            #return np.sum(term1 + term2, axis=0)   # See Paragraph around Eq 43
         else:
             return np.array([[0,0,0]])
 
@@ -217,11 +223,11 @@ if __name__ == "__main__":
 
                 # We only send 2D commands, keep desired z-pos fixed
                 Quadrotors[i].control(
-                            np.array([curr_pose[0]+curr_vel[0]*dt, curr_pose[1]+curr_vel[1]*dt, 1]),        # xyz pose Desired
-                            np.array([0, 0, 0, 0]),                                                         # Rotation Quaternion Desired
-                            np.array([0, 0 , 0]),                                                           # Roll Pitch Yaw Desired
-                            (np.array([curr_vel[0]+u[0]*dt, curr_vel[1]+u[1]*dt, 0]), np.array([0,0,0])),   # Velocity Desired
-                            (np.array([u[0], u[1], u[2]]), np.array([0,0,0]))                               # Acceleration Desired
+                            np.array([curr_pose[0]+curr_vel[0]*dt, curr_pose[1]+curr_vel[1]*dt, 1]),                            # xyz pose Desired
+                            np.array([0, 0, 0, 0]),                                                                             # Rotation Quaternion Desired
+                            np.array([0, 0 , 0]),                                                                               # Roll Pitch Yaw Desired
+                            (np.array([curr_vel[0]+u[0]*dt, curr_vel[1]+u[1]*dt, 0]), np.array([0,0,0])),                       # Velocity Desired
+                            (np.array([u[0], u[1], 0]), np.array([0,0,0]))                                                      # Acceleration Desired
                 )
             else:
                 # This should only run once to initialize object fields
